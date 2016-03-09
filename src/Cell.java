@@ -1,30 +1,56 @@
 
 public class Cell {
-	private int xcoord, ycoord, terrainType;
-	private Cell nNeighbour, eNeighbour, sNeighbour, wNeighbour;
-	private Cell[] neighbours;
+	private int xcoord, ycoord;
+	private double[] nNeighbourState, eNeighbourState, sNeighbourState, wNeighbourState;
+	private double[] fullStateVector;
 	private double[] stateVector;
-	private double[] nextStateVector;
+	private double[] nextFullStateVector;
+	private int stateVectorLength = 9;
 
-	public Cell(int xcoord, int ycoord, double population, double food, int terrainType) {
+	public Cell(int xcoord, int ycoord, double population, double food, double terrainType) {
 		this.xcoord = xcoord;
 		this.ycoord = ycoord;
-		stateVector = new double[6];
+		stateVector = new double[stateVectorLength];
 		stateVector[0] = population;
 		stateVector[1] = food;
-		nextStateVector = new double[6];
-		neighbours = new Cell[4];
-		
-		for (int i = 0; i < 4; i++) {
-			if (neighbours[i] == null) {
-				stateVector[i+2] = Double.parseDouble(Raster.DEFAULT_NODATA);
-			} else {
-				stateVector[i+2] = neighbours[i].getByIndex(i+2);
+		stateVector[2] = terrainType;
+		if (terrainType == -1) {
+			stateVector[3] = 0;
+		} else {
+			stateVector[3] = 1;
+		}
+		nextFullStateVector = new double[stateVectorLength];
+		fullStateVector = new double[stateVectorLength * 5];
+	}
+
+
+
+	public void calculateNextState(double[][] functionMatrix) {
+		if ( fullStateVector.length != functionMatrix.length) {
+			throw (new IllegalArgumentException("Matrices do not match. Can not multiply " + functionMatrix[0].length + "x" + functionMatrix.length + " by " + stateVector.length + "x1"));
+		}
+		for (int i = 0; i < functionMatrix.length; i++) {
+			for (int j = 0; j < functionMatrix[0].length; j++) {
+				nextFullStateVector[i] += functionMatrix[i][j] * fullStateVector[j];
 			}
+		}
+
+	}
+
+	public void updateState() {
+		for (int i = 0; i < stateVectorLength; i++) {
+			stateVector[i] = nextFullStateVector[i];
 		}
 		
 	}
-
+	
+	public void threshold() {
+		if (stateVector[0] < 0)
+			stateVector[0] = 0;
+	}
+	
+	
+	
 	public double getByIndex(int i) {
 		return stateVector[i];
 	}
@@ -33,50 +59,38 @@ public class Cell {
 		return stateVector[0];
 	}
 
-	public double getFood() {
-		return stateVector[1];
-	}
-
-	public void calculateNextState(double[][] functionMatrix) {
-		if ( stateVector.length != functionMatrix.length) {
-			throw (new IllegalArgumentException("Matrices do not match. Can not multiply " + functionMatrix[0].length + "x" + functionMatrix.length + " by " + stateVector.length + "x1"));
-		}
-		for (int i = 0; i < functionMatrix.length; i++) {
-			for (int j = 0; j < functionMatrix[0].length; j++) {
-				nextStateVector[i] += functionMatrix[i][j] * stateVector[j];
-			}
-		}
-
-	}
-
-	public void updateState() {
-		stateVector = nextStateVector;
-		
-		// TODO: Thresholding Step
-	}
-	
-	public void threshold() {
-		if (this)
-	}
-	
 	public void setNorthNeighbour(Cell neighbour) {
-		nNeighbour = neighbour;
-		neighbours[0] = neighbour;
+		nNeighbourState = neighbour.stateVector();
 	}
 	
 	public void setEastNeighbour(Cell neighbour) {
-		eNeighbour = neighbour;
-		neighbours[1] = neighbour;
+		eNeighbourState = neighbour.stateVector();
 	}
 	
 	public void setSouthNeighbour(Cell neighbour) {
-		sNeighbour = neighbour;
-		neighbours[2] = neighbour;
+		sNeighbourState = neighbour.stateVector();
 	}
 	
 	public void setWestNeighbour(Cell neighbour) {
-		wNeighbour = neighbour;
-		neighbours[3] = neighbour;
+		wNeighbourState = neighbour.stateVector();
+	}
+	
+	public void makeFullStateVector() {
+		for (int i = 0; i < stateVectorLength; i++) {
+			fullStateVector[i] = stateVector[i];
+		}
+		for (int i = stateVectorLength; i < stateVectorLength*2; i++) {
+			fullStateVector[i] = nNeighbourState[i];
+		}
+		for (int i = stateVectorLength*2; i < stateVectorLength*3; i++) {
+			fullStateVector[i] = sNeighbourState[i];
+		}
+		for (int i = stateVectorLength*3; i < stateVectorLength*4; i++) {
+			fullStateVector[i] = eNeighbourState[i];
+		}
+		for (int i = stateVectorLength*4; i < stateVectorLength*5; i++) {
+			fullStateVector[i] = wNeighbourState[i];
+		}
 	}
 	
 	public double[] stateVector() {
